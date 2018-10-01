@@ -22,13 +22,13 @@ void main() {
     final http.Response res = await http.get(url);
 
     expect(res.statusCode, 200);
-    expect(parseTopStories(res.body), isNotEmpty);
 
-    final List idList = (json.decode(res.body) as List);
+    final List<int> idList = parseTopStories(res.body);
+    expect(idList, isNotEmpty);
     final String storyUrl = 'https://hacker-news.firebaseio.com/v0/item/${idList.first}.json';
     final http.Response storyRes = await http.get(storyUrl);
 
     expect(storyRes.statusCode, 200);
-    expect(parseArticle(storyRes.body).id, isNotNull);
-  });
+    expect(parseArticle(storyRes.body).type, isNotNull);
+  }, skip: true);
 }

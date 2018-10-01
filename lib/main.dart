@@ -1,13 +1,23 @@
-import 'dart:async';
+import 'dart:collection';
 
+import 'package:boring_flutter/src/hn_block.dart';
 import 'package:flutter/material.dart';
-import 'src/article.dart';
-import 'package:http/http.dart' as http;
+import 'package:boring_flutter/src/article.dart';
 import 'package:url_launcher/url_launcher.dart';
 
-void main() => runApp(MyApp());
+void main() {
+  final hnBloc = HackerNewsBloc();
+  runApp(MyApp(bloc: hnBloc,));
+}
 
 class MyApp extends StatelessWidget {
+  final HackerNewsBloc bloc;
+
+  MyApp({
+    Key key,
+    this.bloc
+  });
+
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -15,13 +25,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         primarySwatch: Colors.blue,
       ),
-      home: MyHomePage(title: 'Flutter Demo Home Page'),
+      home: MyHomePage(title: 'Flutter Hacker News', bloc: bloc,),
     );
   }
 }
 
 class MyHomePage extends StatefulWidget {
-  MyHomePage({Key key, this.title}) : super(key: key);
+  final HackerNewsBloc bloc;
+
+  MyHomePage({Key key, this.bloc, this.title}) : super(key: key);
 
   final String title;
 
@@ -30,60 +42,25 @@ class MyHomePage extends StatefulWidget {
 }
 
 class _MyHomePageState extends State<MyHomePage> {
-  List<int> _articles = [
-    18105129,
-    18106224,
-    18091929,
-    18092279,
-    18099795,
-    18105375,
-    18104861,
-    18104879,
-    18104508,
-    18104761,
-    18106504,
-    18105931,
-    18097569
-  ]; // articles;
-
-  Future<Article> _getArticle(int id) async {
-    final String storyUrl = 'https://hacker-news.firebaseio.com/v0/item/$id.json';
-    final http.Response storyRes = await http.get(storyUrl);
-    if (storyRes.statusCode == 200) {
-      return parseArticle(storyRes.body);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.title),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          await Future.delayed(const Duration(seconds: 1));
-//          setState(() {
-//            _articles.removeAt(0);
-//          });
+      body: StreamBuilder<UnmodifiableListView<Article>>(
+        stream: widget.bloc.articles,
+        initialData: UnmodifiableListView<Article>(<Article>[]),
+        builder: (BuildContext context, AsyncSnapshot snapshot) {
+          if (snapshot.data.isNotEmpty) {
+            final List<Article> data = snapshot.data;
+            return ListView(
+              children: data.map(_buildItem).toList(),
+            );
+          } else {
+            return Center(child: CircularProgressIndicator());
+          }
         },
-        child: ListView(
-          children: _articles.map((articleId) =>
-            FutureBuilder<Article>(
-              future: _getArticle(articleId),
-              builder: (BuildContext context, AsyncSnapshot<Article> snapshot) {
-                if (snapshot.connectionState == ConnectionState.done) {
-                  return _buildItem(snapshot.data);
-                } else {
-                  return Padding(
-                    padding: const EdgeInsets.all(8.0),
-                    child: Center(child: CircularProgressIndicator()),
-                  );
-                }
-              },
-            )
-          ).toList(),
-        ),
       ),
     );
   }
